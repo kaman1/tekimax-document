@@ -256,7 +256,7 @@ export const generateUploadUrl = mutation({
 
 export const remove = mutation({
   args: {
-    workspaceId: v.id("workspaces"),
+    id: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -273,19 +273,17 @@ export const remove = mutation({
       throw new Error("User not found");
     }
 
-    const workspace = await ctx.db.get(args.workspaceId);
+    const workspace = await ctx.db.get(args.id);
     if (!workspace) {
       throw new Error("Workspace not found");
     }
 
     // Check if user is owner
-    if (workspace.ownerId !== user._id) {
-      throw new Error("Unauthorized");
+    const member = workspace.members.find(m => m.userId === user._id);
+    if (!member || member.role !== "owner") {
+      throw new Error("Only workspace owners can delete workspaces");
     }
 
-    // Remove workspace
-    await ctx.db.delete(args.workspaceId);
-
-    return { success: true };
+    await ctx.db.delete(args.id);
   },
 });

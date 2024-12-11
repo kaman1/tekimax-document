@@ -4,25 +4,20 @@ import {
   Text,
   Button,
   Box,
-  Select,
 } from "@radix-ui/themes";
 import { useState, useCallback } from 'react';
 import { useMutation } from "convex/react";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ImageIcon, UploadIcon, Cross2Icon } from '@radix-ui/react-icons';
+import { ImageIcon, UploadIcon, TrashIcon } from '@radix-ui/react-icons';
 import type { UploadFileResponse } from "@xixixao/uploadstuff/react";
 import { styled } from '@stitches/react';
 import { AnimatedGridPattern } from "./magicui/animated-grid-pattern";
 import * as Form from "@radix-ui/react-form";
-import { useImageUpload } from "@/hooks/use-image-upload";
-import { CircleUserRound } from "lucide-react";
-import Image from "next/image";
 import { toast } from "sonner";
 import { api } from "@v1/backend/convex/_generated/api";
 import { cn } from "@v1/ui/utils";
 import { Input } from "@v1/ui/input";
 import { UploadInput } from "@v1/ui/upload-input";
-import { Avatar } from "@v1/ui/avatar";
 
 const StyledUploadArea = styled('div', {
   border: '2px dashed var(--gray-6)',
@@ -49,6 +44,8 @@ export function CreateWorkspaceModal({
   const [name, setName] = useState("");
   const [logoId, setLogoId] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const createWorkspace = useMutation(api.workspaces.create);
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl);
   const { setActiveWorkspaceId } = useWorkspace();
@@ -60,27 +57,25 @@ export function CreateWorkspaceModal({
     }
     
     try {
-      const storageId = (uploaded[0].response as { storageId: string }).storageId;
-      // Get the URL from the upload response
-      const logoUrl = uploaded[0].url;
-      console.log('Upload response:', { storageId, logoUrl }); // Debug log
+      setIsUploadingLogo(true);
+      const storageId = (uploaded[0].response as { storageId: Id<"_storage"> }).storageId;
+      console.log('Upload response:', { storageId, uploaded }); // Debug log
       
-      if (!logoUrl) {
-        throw new Error('No URL in upload response');
-      }
-
-      // Set both the ID and preview URL
+      // Set the preview immediately for better UX
+      const fileUrl = URL.createObjectURL(uploaded[0].response.file);
+      setLogoPreview(fileUrl);
+      
+      // Set the actual logo ID after successful upload
       setLogoId(storageId);
-      setLogoPreview(logoUrl);
       
-      // Show success message
       toast.success("Logo uploaded successfully");
     } catch (error) {
       console.error("Error handling logo upload:", error);
       toast.error("Failed to process logo upload");
-      // Reset the state on error
       setLogoId(null);
       setLogoPreview(null);
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -99,13 +94,12 @@ export function CreateWorkspaceModal({
     }
 
     try {
-      // Create workspace with logo if available
+      setIsCreating(true);
       const workspace = await createWorkspace({ 
         name,
         type: "custom",
         settings: logoId ? {
-          logoId,
-          logoUrl: logoPreview || undefined,
+          logoId
         } : undefined,
       });
       
@@ -116,12 +110,14 @@ export function CreateWorkspaceModal({
     } catch (error) {
       console.error("Error creating workspace:", error);
       toast.error("Failed to create workspace");
+    } finally {
+      setIsCreating(false);
     }
   };
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={setOpen}>
-      <Dialog.Content className="max-w-2xl">
+      <Dialog.Content className="max-w-md">
         <div className="relative">
           <div className="absolute inset-0 overflow-hidden -z-10">
             <AnimatedGridPattern
@@ -142,52 +138,7 @@ export function CreateWorkspaceModal({
 
           <Form.Root className="mt-6" onSubmit={handleSubmit}>
             <Flex gap="6" align="start">
-              {/* Logo Upload */}
-              <div className="flex-shrink-0">
-                <Text size="2" weight="medium" mb="2">Workspace Logo</Text>
-                {logoPreview ? (
-                  <div className="relative">
-                    <Avatar
-                      size="6"
-                      src={logoPreview}
-                      fallback={<ImageIcon className="h-8 w-8 text-gray-600" />}
-                      className="border-2 border-gray-200"
-                    />
-                    <Button
-                      type="button"
-                      variant="soft"
-                      color="red"
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 shadow-sm hover:bg-red-600 hover:text-white transition-colors"
-                      onClick={handleRemoveLogo}
-                    >
-                      <Cross2Icon className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Avatar
-                      size="6"
-                      fallback={
-                        <div className="h-full w-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer">
-                          <ImageIcon className="h-8 w-8 text-gray-600" />
-                        </div>
-                      }
-                      className="border-2 border-gray-200"
-                    >
-                      <UploadInput
-                        generateUploadUrl={generateUploadUrl}
-                        onUploadComplete={handleLogoUpload}
-                        maxFiles={1}
-                        accept="image/*"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    </Avatar>
-                    <Text size="1" color="gray" align="center" mt="1">
-                      Click to upload
-                    </Text>
-                  </div>
-                )}
-              </div>
+
 
               {/* Workspace Name */}
               <div className="flex-grow space-y-1">
@@ -209,14 +160,25 @@ export function CreateWorkspaceModal({
             {/* Submit Button */}
             <Flex gap="3" mt="6" justify="end">
               <Button 
-                variant="soft" 
+                variant="surface" 
                 color="gray" 
                 onClick={() => setOpen(false)}
+                disabled={isCreating}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                Create Workspace
+              <Button 
+                type="submit"
+                disabled={isCreating || isUploadingLogo}
+              >
+                {isCreating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Creating...
+                  </div>
+                ) : (
+                  'Create Workspace'
+                )}
               </Button>
             </Flex>
           </Form.Root>

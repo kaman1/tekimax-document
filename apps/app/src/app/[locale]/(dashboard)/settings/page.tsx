@@ -115,33 +115,9 @@ export default function DashboardSettings() {
     }
   };
 
-  const handleUpdateWorkspaceType = async (type: string, customType?: string) => {
-    if (!activeWorkspace) return;
 
-    try {
-      await api.workspaces.update({
-        id: activeWorkspace._id,
-        type,
-        customType,
-        name: activeWorkspace.name,
-      });
-      toast.success("Workspace type updated successfully");
-    } catch (error) {
-      console.error("Error updating workspace type:", error);
-      toast.error("Failed to update workspace type");
-    }
-  };
 
-  const handleDeleteWorkspace = async (workspaceId: Id<"workspaces">) => {
-    try {
-      await removeWorkspace({ id: workspaceId });
-      toast.success('Workspace deleted successfully');
-      router.push("/");
-    } catch (error) {
-      console.error("Error deleting workspace:", error);
-      toast.error('Failed to delete workspace');
-    }
-  };
+
 
   const handleDeleteAccount = async () => {
     console.log(user?.subscription);
@@ -157,10 +133,7 @@ export default function DashboardSettings() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/login?logout=true");
-  };
+
 
   const unsubscribeHref = `https://sandbox.polar.sh/purchases/subscriptions/${user?.subscription?.polarId}`;
 
@@ -194,10 +167,7 @@ export default function DashboardSettings() {
     },
   });
 
-  const [isEditingType, setIsEditingType] = useState(false);
-  const [workspaceType, setWorkspaceType] = useState<string>("team");
-  const [customType, setCustomType] = useState("");
-  const [customTypes, setCustomTypes] = useState<string[]>([]);
+
 
   if (!user) {
     return null;

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Input } from "@v1/ui/input";
 
 export function DeleteWorkspaceModal({
   isOpen,
@@ -17,28 +18,27 @@ export function DeleteWorkspaceModal({
   onWorkspaceDeleted?: () => void;
 }) {
   const { activeWorkspace, setActiveWorkspaceId } = useWorkspace();
-  const deleteWorkspace = useMutation(api.workspaces.remove);
+  const removeWorkspace = useMutation(api.workspaces.remove);
   const [confirmationText, setConfirmationText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (!activeWorkspace || activeWorkspace.type === 'personal') return;
-    if (confirmationText !== activeWorkspace.name) {
-      toast.error("Please type the workspace name correctly to confirm deletion");
-      return;
-    }
+    if (!activeWorkspace) return;
 
     try {
-      await deleteWorkspace({ id: activeWorkspace._id });
-      setActiveWorkspaceId(null); // Reset to personal workspace
+      setIsDeleting(true);
+      await removeWorkspace({
+        id: activeWorkspace._id,
+      });
       setOpen(false);
-      setConfirmationText("");
-      toast.success("Workspace deleted successfully");
-      onWorkspaceDeleted?.();
       router.push("/");
+      toast.success("Workspace deleted successfully");
     } catch (error) {
       console.error("Error deleting workspace:", error);
       toast.error("Failed to delete workspace");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -84,7 +84,7 @@ export function DeleteWorkspaceModal({
               <Text as="p" size="2" mb="2" color="gray">
                 Please type <Text weight="bold">{activeWorkspace.name}</Text> to confirm deletion:
               </Text>
-              <TextField.Input
+              <Input
                 placeholder="Type workspace name"
                 value={confirmationText}
                 onChange={(e) => setConfirmationText(e.target.value)}
@@ -103,7 +103,7 @@ export function DeleteWorkspaceModal({
                 variant="solid"
                 color="red"
                 onClick={handleDelete}
-                disabled={confirmationText !== activeWorkspace.name}
+                disabled={confirmationText !== activeWorkspace.name || isDeleting}
               >
                 Delete Workspace
               </Button>
