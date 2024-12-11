@@ -71,7 +71,7 @@ export function Navigation({
           repeatDelay={1}
           className={cn(
             "[mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
-            "absolute inset-x-0 inset-y-[-30%] h-[200%] skew-y-12"
+            "absolute inset-x-0 inset-y-[-10%] h-[200%] skew-y-12"
           )}
         />
         <div className="absolute inset-0 bg-background/20" />
@@ -90,17 +90,19 @@ export function Navigation({
             <DropdownMenu.Trigger>
               <Button variant="ghost" className="gap-2 data-[state=open]:bg-transparent ml-1">
                 <Flex align="center" gap="2">
-                  {activeWorkspace.logoUrl ? (
-                    <img
-                      src={activeWorkspace.logoUrl}
-                      alt={activeWorkspace.name}
+                  {activeWorkspace?.settings?.logoUrl ? (
+                    <Image
+                      src={activeWorkspace?.settings?.logoUrl}
+                      alt={activeWorkspace?.settings?.name}
                       className="h-6 w-6 rounded-full object-cover"
+                      width={24}
+                      height={24}
                     />
                   ) : (
                     <Box className="h-6 w-6 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
                   )}
                   <Text size="2" weight="medium">
-                    {activeWorkspace.name}
+                    {activeWorkspace?.name}
                   </Text>
                   <Box className="rounded-full bg-[var(--accent-3)] px-2 py-0.5">
                     <Text size="1" weight="medium">
@@ -115,105 +117,55 @@ export function Navigation({
               </Button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content>
-              <DropdownMenu.Label>
-                <Text size="1" color="gray">Switch Workspace</Text>
-              </DropdownMenu.Label>
-              {/* Personal Workspace */}
-              <DropdownMenu.Item 
-                key={personalWorkspace._id} 
-                onSelect={() => setActiveWorkspaceId(personalWorkspace._id)}
-              >
-                <Flex align="center" gap="2">
-                  {personalWorkspace.logoUrl ? (
-                    <img
-                      src={personalWorkspace.logoUrl}
-                      alt={personalWorkspace.name}
-                      className="h-6 w-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Box className="h-6 w-6 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
-                  )}
-                  <Text size="2">{personalWorkspace.name}</Text>
-                  <Box className="rounded-full bg-[var(--accent-3)] px-2 py-0.5">
-                    <Text size="1" weight="medium">Personal</Text>
-                  </Box>
-                  {activeWorkspaceId === personalWorkspace._id && (
-                    <Text size="1" color="gray" className="ml-auto">Active</Text>
-                  )}
-                </Flex>
-              </DropdownMenu.Item>
-              
-              {/* Separator between Personal and Team Workspaces */}
-              {workspaces && workspaces.length > 0 && (
-                <DropdownMenu.Separator />
-              )}
-
-              {/* Team Workspaces */}
-              {workspaces?.map((workspace) => (
-                <DropdownMenu.Item 
-                  key={workspace._id} 
-                  onSelect={() => setActiveWorkspaceId(workspace._id)}
+              {allWorkspaces.map((workspace) => (
+                <DropdownMenu.Item
+                  key={workspace._id}
+                  onSelect={() => setActiveWorkspaceId(workspace?._id)}
+                  className="gap-2"
                 >
                   <Flex align="center" gap="2">
-                    {workspace.logoUrl ? (
-                      <img
-                        src={workspace.logoUrl}
-                        alt={workspace.name}
+                    {workspace?.settings?.logoUrl ? (
+                      <Image
+                        src={workspace?.settings?.logoUrl}
+                        alt={workspace?.name}
                         className="h-6 w-6 rounded-full object-cover"
+                        width={24}
+                        height={24}
                       />
                     ) : (
                       <Box className="h-6 w-6 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
                     )}
-                    <Text size="2">{workspace.name}</Text>
-                    <Box className="rounded-full bg-[var(--accent-3)] px-2 py-0.5">
-                      <Text size="1" weight="medium">
-                        {workspace.type === 'custom' ? workspace.customType : workspace.type}
-                      </Text>
-                    </Box>
-                    {activeWorkspaceId === workspace._id && (
-                      <Text size="1" color="gray" className="ml-auto">Active</Text>
+                    <Text>{workspace.name}</Text>
+                    {workspace._id === activeWorkspaceId && (
+                      <StarFilledIcon className="ml-auto h-4 w-4 text-amber-500" />
                     )}
                   </Flex>
                 </DropdownMenu.Item>
               ))}
-
-              {/* Create Workspace Option */}
               <DropdownMenu.Separator />
-              <DropdownMenu.Item onSelect={() => setIsCreateModalOpen(true)}>
-                <Flex align="center" gap="2">
-                  <PlusIcon className="h-4 w-4" />
-                  <Text size="2">Create Workspace</Text>
-                </Flex>
+              <DropdownMenu.Item
+                onSelect={() => setIsCreateModalOpen(true)}
+                className="gap-2"
+              >
+                <PlusIcon />
+                <Text>Create Workspace</Text>
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Root>
         </Flex>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <Button variant="ghost" className="gap-2 data-[state=open]:bg-transparent">
-              <Flex align="center" gap="2">
-                {user.avatarUrl ? (
-                  <img
-                    className="h-8 w-8 rounded-full object-cover"
-                    alt={user.name ?? user.email}
-                    src={user.avatarUrl}
-                  />
-                ) : (
-                  <Box className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
-                )}
-                <Text size="2" weight="medium">
-                  @{user?.name || ""}
-                </Text>
-                <Box className="rounded-full bg-[var(--accent-3)] px-2 py-0.5">
-                  <Text size="1" weight="medium">
-                    {user.subscription?.planId === user.plan ? "Pro" : "Free"}
-                  </Text>
-                </Box>
-                <Flex direction="column" align="center" justify="center" gap="0">
-                  <ChevronUpIcon className="relative top-[1px] h-3 w-3 text-[var(--gray-8)]" />
-                  <ChevronDownIcon className="relative bottom-[1px] h-3 w-3 text-[var(--gray-8)]" />
-                </Flex>
-              </Flex>
+            <Button variant="ghost" className="gap-2">
+              {user.imageUrl ? (
+                <img
+                  src={activeWorkspace.logoUrl || user.imageUrl}
+                  alt={activeWorkspace.name || user.username}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <Box className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
+              )}
+              <ChevronDownIcon />
             </Button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
