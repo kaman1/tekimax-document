@@ -45,7 +45,15 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <Flex align="center" gap="2">
-          <Layers className="w-6 h-6 text-gray-900" />
+          {activeWorkspace?.settings?.logoUrl ? (
+            <img
+              src={activeWorkspace.settings.logoUrl}
+              alt={activeWorkspace.name}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <Layers className="w-6 h-6 text-gray-900" />
+          )}
           <Heading as="h1" size="6" weight="medium">
             {activeWorkspace?.name || "Personal Workspace"}
           </Heading>
