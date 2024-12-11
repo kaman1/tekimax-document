@@ -24,7 +24,8 @@ import { toast } from "sonner";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@v1/ui/select";
 import { Label } from "@radix-ui/react-form";
-
+import { ReloadIcon } from '@radix-ui/react-icons';
+import { usePendingInvites } from "@/hooks/usePendingInvites";
 
 export default function DashboardSettings() {
   const t = useScopedI18n("settings");
@@ -47,11 +48,14 @@ export default function DashboardSettings() {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const { activeWorkspace, members } = useWorkspace();
+  const pendingInvites = usePendingInvites(activeWorkspace?._id);
   const workspaces = useQuery(api.workspaces.list);
   const updateWorkspace = useMutation(api.workspaces.update);
   const removeWorkspace = useMutation(api.workspaces.remove);
   const createWorkspaceType = useMutation(api.workspaceTypes.create);
   const workspaceTypes = useQuery(api.workspaceTypes.list);
+  const resendInvite = useMutation(api.invites.resend);
+  const deleteInvite = useMutation(api.invites.remove);
 
   const router = useRouter();
 
@@ -119,9 +123,25 @@ export default function DashboardSettings() {
     }
   };
 
+  const handleResendInvite = async (inviteId: string) => {
+    try {
+      await resendInvite({ inviteId });
+      toast.success("Invite resent successfully");
+    } catch (error) {
+      toast.error("Failed to resend invite");
+      console.error(error);
+    }
+  };
 
-
-
+  const handleDeleteInvite = async (inviteId: string) => {
+    try {
+      await deleteInvite({ inviteId });
+      toast.success("Invite deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete invite");
+      console.error(error);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     console.log(user?.subscription);
@@ -490,11 +510,13 @@ export default function DashboardSettings() {
                       <Table.ColumnHeaderCell>Member</Table.ColumnHeaderCell>
                       <Table.ColumnHeaderCell>Email</Table.ColumnHeaderCell>
                       <Table.ColumnHeaderCell>Role</Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell align="center">Status</Table.ColumnHeaderCell>
                       <Table.ColumnHeaderCell align="center">Actions</Table.ColumnHeaderCell>
                     </Table.Row>
                   </Table.Header>
 
                   <Table.Body>
+                    {/* Owner/Current User */}
                     <Table.Row>
                       <Table.Cell>
                         <Flex align="center" gap="3">
@@ -510,7 +532,7 @@ export default function DashboardSettings() {
                             </Box>
                           )}
                           <Text size="2" weight="medium">
-                            {user.username || 'Unnamed'}
+                            {user.username || 'You'}
                           </Text>
                         </Flex>
                       </Table.Cell>
@@ -520,8 +542,13 @@ export default function DashboardSettings() {
                         </Text>
                       </Table.Cell>
                       <Table.Cell>
-                        <Badge color="green" size="1">
+                        <Badge color="blue" size="1">
                           Owner
+                        </Badge>
+                      </Table.Cell>
+                      <Table.Cell align="center">
+                        <Badge color="green" size="1">
+                          Active
                         </Badge>
                       </Table.Cell>
                       <Table.Cell align="center">
@@ -531,16 +558,74 @@ export default function DashboardSettings() {
                       </Table.Cell>
                     </Table.Row>
 
-                    {/* Empty State Row */}
-                    <Table.Row>
-                      <Table.Cell colSpan={4}>
-                        <Flex align="center" justify="center" py="4">
-                          <Text size="2" color="gray" align="center">
-                            No other members yet
+                    {/* Other Active Members */}
+
+                    {/* Pending Invites */}
+                    {pendingInvites?.map((invite) => (
+                      <Table.Row key={invite._id}>
+                        <Table.Cell>
+                          <Flex align="center" gap="3">
+                            <Box className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-300 flex items-center justify-center">
+                              <PersonIcon className="h-4 w-4 text-white" />
+                            </Box>
+                            <Text size="2" weight="medium">
+                              {invite.name} top
+                            </Text>
+                          </Flex>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Text size="2" color="gray">
+                            {invite.email}
                           </Text>
-                        </Flex>
-                      </Table.Cell>
-                    </Table.Row>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Badge 
+                            color={invite.role === "owner" ? "blue" : invite.role === "write" ? "purple" : "gray"} 
+                            size="1"
+                          >
+                            {invite.role === "read" ? "Viewer" : invite.role === "write" ? "Editor" : "Admin"}
+                          </Badge>
+                        </Table.Cell>
+                        <Table.Cell align="center">
+                          <Badge color="yellow" size="1">
+                            Pending
+                          </Badge>
+                        </Table.Cell>
+                        <Table.Cell align="center">
+                          <Flex gap="1" justify="center">
+                            <Button 
+                              variant="ghost" 
+                              color="gray" 
+                              size="1"
+                              onClick={() => handleResendInvite(invite._id)}
+                            >
+                              <ReloadIcon className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              color="red" 
+                              size="1"
+                              onClick={() => handleDeleteInvite(invite._id)}
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </Flex>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+
+                    {/* Empty State */}
+                    {(!activeWorkspace?.members.length || activeWorkspace.members.length === 1) && !pendingInvites?.length && (
+                      <Table.Row>
+                        <Table.Cell colSpan={5}>
+                          <Flex align="center" justify="center" py="4">
+                            <Text size="2" color="gray" align="center">
+                              No other members yet
+                            </Text>
+                          </Flex>
+                        </Table.Cell>
+                      </Table.Row>
+                    )}
                   </Table.Body>
                 </Table.Root>
               </Box>

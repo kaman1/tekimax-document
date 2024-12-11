@@ -76,7 +76,7 @@ export function CreateFolderForm() {
                 Folder Name
               </Text>
               <TextField.Root>
-                <TextField.Input
+                <TextField.Slot
                   {...register("name")}
                   placeholder="Enter folder name"
                   size="2"

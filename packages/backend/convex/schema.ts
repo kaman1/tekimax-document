@@ -93,7 +93,7 @@ export default defineSchema({
 
   workspaces: defineTable({
     name: v.string(),
-    type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom")),
+    type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom"), v.literal("workspace")),
     customType: v.optional(v.string()),
     ownerId: v.id("users"),
     members: v.array(v.object({
@@ -142,4 +142,20 @@ export default defineSchema({
     .index("by_document", ["documentId", "workspaceId"])
     .index("by_parent", ["parentId", "workspaceId"])
     .index("by_workspace", ["workspaceId"]),
+
+  invites: defineTable({
+    email: v.string(),
+    name: v.string(),
+    role: v.union(v.literal("read"), v.literal("write"), v.literal("owner")),
+    workspaceId: v.id("workspaces"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
+    otp: v.optional(v.string()),
+    token: v.optional(v.string()),
+    expiresAt: v.number(),
+    createdBy: v.id("users"),
+  }).index("by_email", ["email"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_status", ["status"])
+    .index("by_workspace_and_status", ["workspaceId", "status"]),
+    
 });

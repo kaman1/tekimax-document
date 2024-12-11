@@ -18,18 +18,28 @@ import { cn } from "@v1/ui/utils";
 import { toast } from "sonner";
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const user = useQuery(api.users.getUser);
+  const workspaces = useQuery(api.workspaces.list);
   const updateUsername = useMutation(api.users.updateUsername);
   const createWorkspace = useMutation(api.workspaces.create);
-  const router = useRouter();
   const { pending } = useFormStatus();
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (user && user.username) {
+      setStep(2);
+      if (workspaces && workspaces.length > 0) {
+        router.push("/");
+      }
+    }
+  }, [user, workspaces, router]);
 
   // Form for username
   const usernameForm = useForm({
     validatorAdapter: zodValidator(),
     defaultValues: {
-      username: "",
+      username: user?.username || "",
     },
     onSubmit: async ({ value }) => {
       try {
@@ -50,7 +60,7 @@ export default function OnboardingPage() {
     validatorAdapter: zodValidator(),
     defaultValues: {
       name: "",
-      type: "personal" as const,
+      type: "workspace" as const,
     },
     onSubmit: async ({ value }) => {
       try {
@@ -66,23 +76,6 @@ export default function OnboardingPage() {
       }
     },
   });
-
-  useEffect(() => {
-    if (!user) return;
-    
-    // If user has username and workspace, redirect to home
-    if (user.username) {
-      const checkWorkspace = async () => {
-        const workspaces = await useQuery(api.workspaces.list);
-        if (workspaces && workspaces.length > 0) {
-          router.push("/");
-        } else {
-          setStep(2);
-        }
-      };
-      checkWorkspace();
-    }
-  }, [user]);
 
   if (!user) return null;
 

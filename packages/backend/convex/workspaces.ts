@@ -2,11 +2,12 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { deleteWorkspaceMembers } from "./invites";
 
 export const create = mutation({
   args: {
     name: v.string(),
-    type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom")),
+    type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom"), v.literal("workspace")),
     customType: v.optional(v.string()),
     settings: v.optional(v.object({
       logoId: v.string(),
@@ -31,7 +32,7 @@ export const create = mutation({
         const logoUrl = await ctx.storage.getUrl(args.settings.logoId);
         settings = {
           ...args.settings,
-          logoUrl
+          logoUrl: logoUrl ?? undefined
         };
       } catch (error) {
         console.error("Error getting logo URL:", error);
@@ -192,7 +193,7 @@ export const update = mutation({
           newSettings = {
             ...newSettings,
             ...args.settings,
-            logoUrl
+            logoUrl: logoUrl ?? undefined
           };
         } catch (error) {
           console.error("Error getting logo URL:", error);
@@ -285,5 +286,26 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+export const deleteWorkspace = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    console.log("Starting workspace deletion process for:", args.workspaceId);
+
+    // First, delete all members and invites
+    await ctx.runMutation(internal.invites.deleteWorkspaceMembers, { workspaceId: args.workspaceId });
+
+    // Delete the workspace itself
+    await ctx.db.delete(args.workspaceId);
+
+    console.log("Workspace deletion completed successfully");
+    
+    return {
+      success: true
+    };
   },
 });
