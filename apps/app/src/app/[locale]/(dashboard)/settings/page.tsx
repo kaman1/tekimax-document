@@ -2,6 +2,7 @@
 
 import { UnsubscribeWarningModal } from "@/components/UnsubscribeWarningModal";
 import { DeleteWorkspaceModal } from "@/components/DeleteWorkspaceModal";
+import { InviteUserModal } from "@/components/InviteUserModal"; // Import InviteUserModal
 import { useScopedI18n } from "@/locales/client";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useForm } from "@tanstack/react-form";
@@ -36,12 +37,15 @@ export default function DashboardSettings() {
   const deleteCurrentUserAccount = useMutation(
     api.users.deleteCurrentUserAccount,
   );
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const { doubleCheck, getButtonProps } = useDoubleCheck();
   const [isUnsubscribeModalOpen, setIsUnsubscribeModalOpen] = useState(false);
   const [isDeleteWorkspaceModalOpen, setIsDeleteWorkspaceModalOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceLogo, setWorkspaceLogo] = useState("");
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const { activeWorkspace, members } = useWorkspace();
   const workspaces = useQuery(api.workspaces.list);
   const updateWorkspace = useMutation(api.workspaces.update);
@@ -137,8 +141,6 @@ export default function DashboardSettings() {
 
   const unsubscribeHref = `https://sandbox.polar.sh/purchases/subscriptions/${user?.subscription?.polarId}`;
 
-  const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
 
   const usernameForm = useForm({
     validatorAdapter: zodValidator(),
@@ -172,6 +174,7 @@ export default function DashboardSettings() {
   if (!user) {
     return null;
   }
+
 
   return (
     <div className="space-y-6 w-full">
@@ -474,7 +477,7 @@ export default function DashboardSettings() {
                       People with access to this workspace
                     </Text>
                   </Box>
-                  <Button variant="surface" className="gap-1">
+                  <Button variant="surface" className="gap-1" onClick={() => setInviteModalOpen(true)}>
                     <PersonIcon />
                     Invite Member
                   </Button>
@@ -542,7 +545,14 @@ export default function DashboardSettings() {
                 </Table.Root>
               </Box>
 
-             
+              <InviteUserModal
+                isOpen={inviteModalOpen}
+                setOpen={setInviteModalOpen}
+                onUserInvited={(user) => {
+                  // We'll implement this later
+                  console.log('User invited:', user);
+                }}
+              />
             </Flex>
           </Card>
         </Box>
