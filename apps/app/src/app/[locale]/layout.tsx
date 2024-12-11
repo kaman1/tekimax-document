@@ -5,8 +5,12 @@ import { cn } from "@v1/ui/utils";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { ConvexClientProvider } from "../convex-client-provider";
+import "@radix-ui/themes/styles.css";
+import { Theme } from "@radix-ui/themes";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { Toaster, toast } from 'sonner'
 
 export const metadata: Metadata = {
   title: "Create v1",
@@ -34,14 +38,14 @@ export default function RootLayout({
             "antialiased",
           )}
         >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          <ThemeProvider>
             <TooltipProvider delayDuration={0}>
-              <ConvexClientProvider>{children}</ConvexClientProvider>
+              <ConvexClientProvider>
+                <Theme>
+                  {children}
+                  <Toaster />
+                </Theme>
+              </ConvexClientProvider>
             </TooltipProvider>
           </ThemeProvider>
         </body>

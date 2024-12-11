@@ -4,10 +4,11 @@ import { getLocaleCurrency } from "@/utils/misc";
 import { Polar } from "@polar-sh/sdk";
 import { api } from "@v1/backend/convex/_generated/api";
 import { CURRENCIES, PLANS } from "@v1/backend/convex/schema";
-import { Button } from "@v1/ui/button";
 import { Switch } from "@v1/ui/switch";
 import { useAction, useQuery } from "convex/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Card, Box, Container, Flex, Text, Heading, Grid, Button } from '@radix-ui/themes';
+import { StarFilledIcon, InfoCircledIcon, ExternalLinkIcon } from '@radix-ui/react-icons';
 
 export default function BillingSettings() {
   const user = useQuery(api.users.getUser);
@@ -20,7 +21,11 @@ export default function BillingSettings() {
     "month" | "year"
   >("month");
 
-  const currency = getLocaleCurrency();
+  const [currency, setCurrency] = useState(CURRENCIES.USD);
+
+  useEffect(() => {
+    setCurrency(getLocaleCurrency());
+  }, []);
 
   const freePlan = plans?.find((plan) => plan.key === PLANS.FREE);
   const proPlan = plans?.find((plan) => plan.key === PLANS.PRO);
@@ -33,175 +38,170 @@ export default function BillingSettings() {
     window.location.href = url;
   };
 
+  const handleDowngrade = () => {
+    window.location.href = `https://sandbox.polar.sh/purchases/subscriptions/${user.subscription?.polarId}`;
+  };
+
   if (!user || !plans) {
     return null;
   }
 
   return (
-    <div className="flex h-full w-full flex-col gap-6">
-      <div className="flex w-full flex-col gap-2 p-6 py-2">
-        <h2 className="text-xl font-medium text-primary">
-          This is a demo app.
-        </h2>
-        <p className="text-sm font-normal text-primary/60">
-          Convex SaaS is a demo app that uses Stripe test environment. You can
-          find a list of test card numbers on the{" "}
-          <a
-            href="https://stripe.com/docs/testing#cards"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-primary/80 underline"
-          >
-            Stripe docs
-          </a>
-          .
-        </p>
-      </div>
+    <div className="space-y-6">
+      <Card size="3" style={{ background: 'white' }}>
+        <Box p="6">
+          <Heading as="h2" size="5" mb="4" weight="medium">
+            Secure Payments
+          </Heading>
+          <Text as="p" size="2" color="gray" mb="4">
+            TEKIMAX partners with Stripe to provide secure and reliable payment processing. 
+          </Text>
+        </Box>
+      </Card>
 
-      {/* Plans */}
-      <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
-        <div className="flex flex-col gap-2 p-6">
-          <h2 className="text-xl font-medium text-primary">Plan</h2>
-          <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
+      <Card size="3" style={{ background: 'white' }}>
+        <Box p="6">
+          <Heading as="h2" size="5" mb="4" weight="medium">Plan Information</Heading>
+          <Text as="p" size="2" color="gray" mb="6">
+            Choose the plan that best fits your needs. All plans include our core features, with additional capabilities in the Pro tier.
+          </Text>
+
+          <Text as="p" size="2" color="gray" mb="6">
             You are currently on the{" "}
-            <span className="flex h-[18px] items-center rounded-md bg-primary/10 px-1.5 text-sm font-medium text-primary/80">
-              {user.plan?.key
-                ? user.plan?.key.charAt(0).toUpperCase() +
-                  user.plan?.key.slice(1)
-                : "Free"}
-            </span>
-            plan.
-          </p>
-        </div>
+            <Box as="span" className="inline-flex items-center rounded-md bg-[var(--accent-9)] px-2 py-0.5">
+              <Text size="2" weight="medium" style={{ color: 'white' }}>
+                {user.subscription?.planId === proPlan?._id ? "Pro" : "Free"}
+              </Text>
+            </Box>
+            {" "}plan.
+          </Text>
 
-        {user.subscription?.planId === freePlan?._id && (
-          <div className="flex w-full flex-col items-center justify-evenly gap-2 border-border p-6 pt-0">
+          <Grid columns="1" gap="4">
             {plans.map((plan) => (
-              <div
+              <Card
                 key={plan._id}
-                className={`flex w-full select-none items-center rounded-md border border-border ${
-                  user.subscription?.planId === plan._id && "border-primary/60"
-                }`}
+                variant="surface"
+                className={`${user.subscription?.planId === plan._id ? "border-2 border-[var(--accent-9)]" : ""} transition-all hover:border-[var(--accent-8)]`}
               >
-                <div className="flex w-full flex-col items-start p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-medium text-primary">
-                      {plan.name}
-                    </span>
+                <Box p="4">
+                  <Flex justify="between" align="center">
+                    <Box>
+                      <Flex gap="2" align="center" mb="1">
+                        <Text as="p" size="2" weight="medium">
+                          {plan.name}
+                          {user.subscription?.planId === plan._id && (
+                            <Box as="span" className="ml-2 inline-flex items-center rounded-md bg-[var(--accent-3)] px-2 py-0.5">
+                              <Text size="1" weight="medium">Active</Text>
+                            </Box>
+                          )}
+                        </Text>
+                        {plan._id !== freePlan?._id && (
+                          <Box className="rounded-md bg-[var(--accent-3)] px-2 py-0.5">
+                            <Text size="2" weight="medium">
+                              {currency === CURRENCIES.USD ? "$" : "€"}{" "}
+                              {selectedPlanInterval === "month"
+                                ? (plan.prices.month?.[currency]?.amount ?? 0) / 100
+                                : (plan.prices.year?.[currency]?.amount ?? 0) / 100}{" "}
+                              / {selectedPlanInterval === "month" ? "month" : "year"}
+                            </Text>
+                          </Box>
+                        )}
+                      </Flex>
+                      <Text as="p" size="2" color="gray">
+                        {plan._id === freePlan?._id 
+                          ? "Get started with essential features and basic usage limits"
+                          : "Unlock advanced features, higher usage limits, and priority support"}
+                      </Text>
+                    </Box>
+
                     {plan._id !== freePlan?._id && (
-                      <span className="flex items-center rounded-md bg-primary/10 px-1.5 text-sm font-medium text-primary/80">
-                        {currency === CURRENCIES.USD ? "$" : "€"}{" "}
-                        {/* TODO: remove assertions */}
-                        {selectedPlanInterval === "month"
-                          ? (plan.prices.month?.[currency]?.amount ?? 0) / 100
-                          : (plan.prices.year?.[currency]?.amount ?? 0) /
-                            100}{" "}
-                        / {selectedPlanInterval === "month" ? "month" : "year"}
-                      </span>
+                      <Flex align="center" gap="2">
+                        <Text as="label" size="2" color="gray">
+                          {selectedPlanInterval === "month" ? "Monthly" : "Yearly"}
+                        </Text>
+                        <Switch
+                          checked={selectedPlanInterval === "year"}
+                          onCheckedChange={() =>
+                            setSelectedPlanInterval((prev) =>
+                              prev === "month" ? "year" : "month",
+                            )
+                          }
+                        />
+                      </Flex>
                     )}
-                  </div>
-                  <p className="text-start text-sm font-normal text-primary/60">
-                    {plan.description}
-                  </p>
-                </div>
-
-                {/* Billing Switch */}
-                {plan._id !== freePlan?._id && (
-                  <div className="flex items-center gap-2 px-4">
-                    <label
-                      htmlFor="interval-switch"
-                      className="text-start text-sm text-primary/60"
-                    >
-                      {selectedPlanInterval === "month" ? "Monthly" : "Yearly"}
-                    </label>
-                    <Switch
-                      id="interval-switch"
-                      checked={selectedPlanInterval === "year"}
-                      onCheckedChange={() =>
-                        setSelectedPlanInterval((prev) =>
-                          prev === "month" ? "year" : "month",
-                        )
-                      }
-                    />
-                  </div>
-                )}
-              </div>
+                  </Flex>
+                </Box>
+              </Card>
             ))}
-          </div>
-        )}
+          </Grid>
 
-        {user.subscription && user.subscription.planId === proPlan?._id && (
-          <div className="flex w-full flex-col items-center justify-evenly gap-2 border-border p-6 pt-0">
-            <div className="flex w-full items-center overflow-hidden rounded-md border border-primary/60">
-              <div className="flex w-full flex-col items-start p-4">
-                <div className="flex items-end gap-2">
-                  <span className="text-base font-medium text-primary">
-                    {proPlan?.name}
-                  </span>
-                  <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
-                    {user.subscription.cancelAtPeriodEnd === true ? (
-                      <span className="flex h-[18px] items-center text-sm font-medium text-red-500">
-                        Expires
-                      </span>
-                    ) : (
-                      <span className="flex h-[18px] items-center text-sm font-medium text-green-500">
-                        Renews
-                      </span>
-                    )}
-                    on:{" "}
-                    {new Date(
-                      user.subscription.currentPeriodEnd ?? 0 * 1000,
-                    ).toLocaleDateString("en-US")}
-                    .
-                  </p>
-                </div>
-                <p className="text-start text-sm font-normal text-primary/60">
-                  {proPlan?.description}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 py-3 dark:bg-card">
-          <p className="text-sm font-normal text-primary/60">
-            You will not be charged for testing the subscription upgrade.
-          </p>
           {user.subscription?.planId === freePlan?._id && (
-            <Button type="submit" size="sm" onClick={handleUpgradeCheckout}>
-              Upgrade to PRO
-            </Button>
+            <Box mt="4">
+              <Button 
+                size="3" 
+                variant="solid" 
+                highContrast
+                onClick={handleUpgradeCheckout}
+              >
+                <StarFilledIcon className="h-4 w-4 mr-2" />
+                Upgrade to Pro
+              </Button>
+            </Box>
           )}
-        </div>
-      </div>
 
-      {/* Manage Subscription */}
-      <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
-        <div className="flex flex-col gap-2 p-6">
-          <h2 className="text-xl font-medium text-primary">
+          {user.subscription?.planId === proPlan?._id && (
+            <Box mt="4">
+              <Button 
+                size="3" 
+                variant="soft"
+                color="red"
+                onClick={handleDowngrade}
+              >
+                Downgrade to Free
+              </Button>
+              <Text as="p" size="2" color="gray" mt="2">
+                Your Pro features will remain active until the end of your current billing period.
+              </Text>
+            </Box>
+          )}
+        </Box>
+      </Card>
+
+      <Card size="3" style={{ background: 'white' }}>
+        <Box p="6">
+          <Heading as="h2" size="5" mb="4" weight="medium">
             Manage Subscription
-          </h2>
-          <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
+          </Heading>
+          <Text as="p" size="2" color="gray" mb="6">
             Update your payment method, billing address, and more.
-          </p>
-        </div>
+          </Text>
 
-        <div className="flex min-h-14 w-full items-center justify-between rounded-lg rounded-t-none border-t border-border bg-secondary px-6 py-3 dark:bg-card">
-          <p className="text-sm font-normal text-primary/60">
-            You will be redirected to the Stripe Customer Portal.
-          </p>
+          <Card variant="surface" style={{ background: 'var(--gray-2)' }} className="p-4">
+            <Flex justify="between" align="center">
+              <Box>
+                <Text as="p" size="2" weight="medium" mb="1">
+                  Billing Portal
+                </Text>
+                <Text as="p" size="2" color="gray">
+                  Manage your subscription, payment methods, and billing history.
+                </Text>
+              </Box>
 
-          <a
-            href={`https://sandbox.polar.sh/purchases/subscriptions/${user.subscription?.polarId}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Button type="submit" size="sm">
-              Manage
-            </Button>
-          </a>
-        </div>
-      </div>
+              <a
+                href={`https://sandbox.polar.sh/purchases/subscriptions/${user.subscription?.polarId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex"
+              >
+                <Button size="3" variant="solid" highContrast>
+                  <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                  Manage Subscription
+                </Button>
+              </a>
+            </Flex>
+          </Card>
+        </Box>
+      </Card>
     </div>
   );
 }

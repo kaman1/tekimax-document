@@ -59,6 +59,22 @@
   }
 }
 
+@keyframes grid-pattern {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.1) rotate(0deg);
+  }
+  10%, 90% {
+    opacity: var(--max-opacity, 0.1);
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.animate-grid-pattern {
+  animation: grid-pattern var(--duration, 3s) ease-in-out var(--delay, 0s) infinite;
+  animation-delay: var(--delay, 0s);
+}
+
 @layer base {
   * {
     @apply border-border;

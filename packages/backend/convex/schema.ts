@@ -60,6 +60,7 @@ export default defineSchema({
   })
     .index("email", ["email"])
     .index("polarId", ["polarId"]),
+
   plans: defineTable({
     key: planKeyValidator,
     polarProductId: v.string(),
@@ -72,8 +73,10 @@ export default defineSchema({
   })
     .index("key", ["key"])
     .index("polarProductId", ["polarProductId"]),
+
   subscriptions: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
     planId: v.id("plans"),
     polarId: v.string(),
     polarPriceId: v.string(),
@@ -85,5 +88,55 @@ export default defineSchema({
     cancelAtPeriodEnd: v.optional(v.boolean()),
   })
     .index("userId", ["userId"])
+    .index("workspaceId", ["workspaceId"])
     .index("polarId", ["polarId"]),
+
+  workspaces: defineTable({
+    name: v.string(),
+    type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom")),
+    customType: v.optional(v.string()),
+    ownerId: v.id("users"),
+    members: v.array(v.object({
+      userId: v.id("users"),
+      role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+      joinedAt: v.number(),
+    })),
+    settings: v.object({}),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_member", ["members"]),
+
+  workspaceTypes: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
+  })
+    .index("by_workspace", ["workspaceId"]),
+    
+  documents: defineTable({
+    title: v.string(),
+    content: v.string(),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
+    lastEditedBy: v.id("users"),
+    parentId: v.optional(v.id("documents")),
+    isArchived: v.optional(v.boolean()),
+    isPublished: v.optional(v.boolean()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_parent", ["parentId", "workspaceId"])
+    .index("by_creator", ["createdBy", "workspaceId"]),
+
+  comments: defineTable({
+    content: v.string(),
+    documentId: v.id("documents"),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
+    parentId: v.optional(v.id("comments")),
+    isResolved: v.optional(v.boolean()),
+  })
+    .index("by_document", ["documentId", "workspaceId"])
+    .index("by_parent", ["parentId", "workspaceId"])
+    .index("by_workspace", ["workspaceId"]),
 });

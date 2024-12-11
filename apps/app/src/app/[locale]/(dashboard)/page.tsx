@@ -1,76 +1,114 @@
+"use client";
+
 import { Header } from "@/app/[locale]/(dashboard)/_components/header";
 import { getScopedI18n } from "@/locales/server";
+import { CreateFolderForm } from "@/components/forms/create-folder-form";
+import * as Dialog from "@radix-ui/react-dialog";
+import { FolderIcon, X, Layers } from "lucide-react";
+import { Card, Box, Container, Flex, Text, Heading, Grid, Button, Table, Select } from '@radix-ui/themes';
+import { FileIcon, PlusIcon } from '@radix-ui/react-icons';
+import { useQuery } from "convex/react";
+import { api } from "@v1/backend/convex/_generated/api";
+import { useEffect, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 
-export const metadata = {
-  title: "Home",
-};
-
-import { buttonVariants } from "@v1/ui/button";
-import { cn } from "@v1/ui/utils";
-import { ExternalLink, Plus } from "lucide-react";
-
-export default async function Page() {
-  const t = await getScopedI18n("dashboard");
+export default function DashboardPage() {
+  const { activeWorkspace } = useWorkspace();
 
   return (
-    <>
-      <Header title={t("title")} description={t("description")} />
-      <div className="flex h-full w-full bg-secondary px-6 py-8 dark:bg-black">
-        <div className="z-10 mx-auto flex h-full w-full max-w-screen-xl gap-12">
-          <div className="flex w-full flex-col rounded-lg border border-border bg-card dark:bg-black">
-            <div className="flex w-full flex-col rounded-lg p-6">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-xl font-medium text-primary">
-                  {t("bodyTitle")}
-                </h2>
-                <p className="text-sm font-normal text-primary/60">
-                  {t("bodyDescription")}
-                </p>
-              </div>
-            </div>
-            <div className="flex w-full px-6">
-              <div className="w-full border-b border-border" />
-            </div>
-            <div className="relative mx-auto flex w-full  flex-col items-center p-6">
-              <div className="relative flex w-full flex-col items-center justify-center gap-6 overflow-hidden rounded-lg border border-border bg-secondary px-6 py-24 dark:bg-card">
-                <div className="z-10 flex max-w-[460px] flex-col items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-card hover:border-primary/40">
-                    <Plus className="h-8 w-8 stroke-[1.5px] text-primary/60" />
-                  </div>
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-base font-medium text-primary">
-                      {t("title")}
-                    </p>
-                    <p className="text-center text-base font-normal text-primary/60">
-                      {t("description")}
-                    </p>
-                    <span className="hidden select-none items-center rounded-full bg-green-500/5 px-3 py-1 text-xs font-medium tracking-tight text-green-700 ring-1 ring-inset ring-green-600/20 backdrop-blur-md dark:bg-green-900/40 dark:text-green-100 md:flex">
-                      {t("bodyTip")}
-                    </span>
-                  </div>
-                </div>
-                <div className="z-10 flex items-center justify-center">
-                  <a
-                    target="_blank"
-                    rel="noreferrer"
-                    href="https://github.com/get-convex/v1/tree/main/docs"
-                    className={cn(
-                      `${buttonVariants({ variant: "ghost", size: "sm" })} gap-2`,
-                    )}
-                  >
-                    <span className="text-sm font-medium text-primary/60 group-hover:text-primary">
-                      {t("documentationLink")}
-                    </span>
-                    <ExternalLink className="h-4 w-4 stroke-[1.5px] text-primary/60 group-hover:text-primary" />
-                  </a>
-                </div>
-                <div className="base-grid absolute h-full w-full opacity-40" />
-                <div className="absolute bottom-0 h-full w-full bg-gradient-to-t from-[hsl(var(--card))] to-transparent" />
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <Flex align="center" gap="2">
+          <Layers className="w-6 h-6 text-gray-900" />
+          <Heading as="h1" size="6" weight="medium">
+            {activeWorkspace?.name || "Personal Workspace"}
+          </Heading>
+        </Flex>
+        <p className="mt-2 text-gray-600">Manage your documents and folders</p>
       </div>
-    </>
+
+      <Grid columns={{ initial: '1', md: '6' }} gap="6">
+        <Box className="col-span-4">
+          <Card size="3" style={{ background: 'white' }}>
+            <Box p="6">
+              <Flex justify="between" align="center" mb="4">
+                <Heading as="h2" size="5" weight="medium">
+                  Folders
+                </Heading>
+                <Flex gap="3" align="center">
+                  <Select.Root defaultValue="all">
+                    <Select.Trigger placeholder="Filter by type" />
+                    <Select.Content>
+                      <Select.Group>
+                        <Select.Label>Filter</Select.Label>
+                        <Select.Item value="all">All Folders</Select.Item>
+                        <Select.Item value="empty">Empty Folders</Select.Item>
+                      </Select.Group>
+                    </Select.Content>
+                  </Select.Root>
+
+                  <Dialog.Root>
+                    <Dialog.Trigger asChild>
+                      <Button size="2" variant="soft" highContrast>
+                        <PlusIcon className="mr-1 h-3 w-3" />
+                        New Folder
+                      </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Portal>
+                      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+                      <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg">
+                        <CreateFolderForm />
+                      </Dialog.Content>
+                    </Dialog.Portal>
+                  </Dialog.Root>
+                </Flex>
+              </Flex>
+
+              <Card variant="surface" style={{ background: 'var(--gray-2)' }} className="p-8 text-center">
+                <Flex direction="column" align="center" gap="4">
+                  <Box className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-[var(--gray-4)]">
+                    <FolderIcon className="h-8 w-8 text-[var(--gray-8)]" />
+                  </Box>
+                  <Box>
+                    <Text as="p" size="2" weight="medium" mb="2">
+                      No folders yet
+                    </Text>
+                    <Text as="p" size="2" color="gray">
+                      Create your first folder to organize your documents
+                    </Text>
+                  </Box>
+                </Flex>
+              </Card>
+            </Box>
+          </Card>
+        </Box>
+
+        <Box className="col-span-2">
+          <Card size="3" style={{ background: 'white' }}>
+            <Box p="6">
+              <Heading as="h2" size="5" mb="4" weight="medium">
+                Recent Activity
+              </Heading>
+
+              <Card variant="surface" style={{ background: 'var(--gray-2)' }} className="p-8 text-center">
+                <Flex direction="column" align="center" gap="4">
+                  <Box className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-[var(--gray-4)]">
+                    <FileIcon className="h-8 w-8 text-[var(--gray-8)]" />
+                  </Box>
+                  <Box>
+                    <Text as="p" size="2" weight="medium" mb="2">
+                      No recent activity
+                    </Text>
+                    <Text as="p" size="2" color="gray">
+                      Your recent document and folder activities will appear here
+                    </Text>
+                  </Box>
+                </Flex>
+              </Card>
+            </Box>
+          </Card>
+        </Box>
+      </Grid>
+    </div>
   );
 }

@@ -4,7 +4,7 @@ export default {
   dashboard: {
     title: "Crea tu App",
     description:
-      "Crea tu app sobre Convex SaaS, explora la documentación y comienza tu viaje.",
+      "Crea tu app sobreTEKIMAX Docs, explora la documentación y comienza tu viaje.",
     bodyTitle: "Comenzar",
     bodyDescription:
       "Explora el panel de control y comienza con tu primera app.",
@@ -27,7 +27,7 @@ export default {
     deleteAccount: {
       title: "Eliminar Cuenta",
       description:
-        "Elimina permanentemente tu cuenta de Convex SaaS, todos tus proyectos, enlaces y sus respectivas estadísticas.",
+        "Elimina permanentemente tu cuenta deTEKIMAX Docs, todos tus proyectos, enlaces y sus respectivas estadísticas.",
       warning: "Esta acción no se puede deshacer, procede con precaución.",
       deleteButton: "Eliminar Cuenta",
       confirmButton: "¿Estás seguro?",

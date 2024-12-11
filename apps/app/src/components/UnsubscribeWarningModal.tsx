@@ -1,3 +1,5 @@
+import { Description } from "@radix-ui/react-dialog";
+import { Text } from "@radix-ui/themes";
 import { Button } from "@v1/ui/button";
 import {
   Dialog,
@@ -23,7 +25,7 @@ export function UnsubscribeWarningModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Active Subscription</DialogTitle>
+          <Text weight="bold">Active Subscription</Text>
           <DialogDescription>
             You have an active subscription. To delete your account, you need to
             unsubscribe first.
@@ -33,9 +35,7 @@ export function UnsubscribeWarningModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <a href={unsubscribeHref} target="_blank" rel="noopener noreferrer">
-            <Button>Go to Unsubscribe Page</Button>
-          </a>
+          
         </DialogFooter>
       </DialogContent>
     </Dialog>

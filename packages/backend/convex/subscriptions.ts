@@ -16,12 +16,10 @@ const createCheckout = async ({
   customerEmail,
   productPriceId,
   successUrl,
-  subscriptionId,
 }: {
   customerEmail: string;
   productPriceId: string;
   successUrl: string;
-  subscriptionId?: string;
 }) => {
   const polar = new Polar({
     server: "sandbox",
@@ -31,7 +29,6 @@ const createCheckout = async ({
     productPriceId,
     successUrl,
     customerEmail,
-    subscriptionId,
   });
   return result;
 };
@@ -99,7 +96,6 @@ export const getProOnboardingCheckoutUrl = action({
       customerEmail: user.email,
       productPriceId: price.polarId,
       successUrl: `${env.SITE_URL}/settings/billing`,
-      subscriptionId: user.subscription?.polarId,
     });
     return checkout.url;
   },

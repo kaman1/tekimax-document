@@ -1,15 +1,15 @@
 export default {
   dashboard: {
-    title: "Create your App",
+    title: "Your Documents",
     description:
-      "Build your app on top of Convex SaaS, explore the documentation and start your journey.",
-    bodyTitle: "Get Started",
+      "Create, collaborate, and enhance your documents with AI-powered tools. Experience the next generation of document editing.",
+    bodyTitle: "Start Creating",
     bodyDescription:
-      "Explore the Dashboard and get started with your first app.",
-    bodyTip: "TIP: Try changing the language!",
-    headerTitle: "Dashboard",
-    headerDescription: "Manage your apps and view your usage.",
-    documentationLink: "Explore Documentation",
+      "Create new documents or access your existing ones. Collaborate in real-time and leverage AI to enhance your content.",
+    bodyTip: "Pro Tip: Use AI to enhance your writing!",
+    headerTitle: "Documents",
+    headerDescription: "Manage your documents and track collaboration activities.",
+    documentationLink: "New Document",
   },
   settings: {
     title: "Settings",
