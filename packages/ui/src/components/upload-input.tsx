@@ -26,6 +26,7 @@ export function UploadInput({
   onUploadComplete,
   label,
   children,
+  className,
   ...props
 }: UploadInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,9 +38,13 @@ export function UploadInput({
         fileInputRef.current.value = "";
       }
       setIsUploading(false);
-      onUploadComplete(uploaded);
+      if (uploaded && uploaded.length > 0) {
+        console.log('Upload complete:', uploaded); // Debug log
+        onUploadComplete(uploaded);
+      }
     },
-    onUploadError: () => {
+    onUploadError: (error) => {
+      console.error('Upload error:', error); // Debug log
       setIsUploading(false);
     },
   });
@@ -49,77 +54,38 @@ export function UploadInput({
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
-    
-    setIsUploading(true);
-    startUpload(files);
-  };
+    const files = event.target.files;
+    if (!files?.length) return;
 
-  if (label) {
-    return (
-      <div className="relative">
-        {label}
-        <div 
-          onClick={handleClick}
-          className="absolute top-0 left-0 right-0 bottom-0 z-10 cursor-pointer flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              handleClick();
-            }
-          }}
-        >
-          <div className="absolute inset-0 bg-black/50 rounded-full" />
-          <div className="relative z-20 flex flex-col items-center gap-1 text-white">
-            <UploadIcon className="h-5 w-5" />
-            <span className="text-xs font-medium">Upload</span>
-          </div>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileChange}
-          className="hidden"
-          {...props}
-        />
-      </div>
-    );
-  }
+    setIsUploading(true);
+    try {
+      await startUpload(files);
+    } catch (error) {
+      console.error('Error starting upload:', error); // Debug log
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div 
-      className="absolute top-0 left-0 right-0 bottom-0 cursor-pointer rounded-full flex flex-col items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
       onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          handleClick();
-        }
-      }}
+      className={className}
     >
-      {isUploading ? (
-        <div className="flex flex-col items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-          <span className="text-xs text-white font-medium">Uploading...</span>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-1">
-          <UploadIcon className="h-5 w-5 text-white" />
-          <span className="text-xs text-white font-medium">Upload</span>
-        </div>
-      )}
       <input
-        ref={fileInputRef}
         type="file"
+        ref={fileInputRef}
         onChange={handleFileChange}
-        className="hidden"
+        style={{ display: 'none' }}
         {...props}
       />
+      {children || label || (
+        <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400">
+          <ImageIcon className="w-8 h-8 text-gray-400" />
+          <span className="mt-2 text-sm text-gray-500">
+            {isUploading ? 'Uploading...' : 'Click to upload'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

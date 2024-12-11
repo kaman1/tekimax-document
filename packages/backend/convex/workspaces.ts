@@ -8,6 +8,10 @@ export const create = mutation({
     name: v.string(),
     type: v.union(v.literal("personal"), v.literal("team"), v.literal("marketing"), v.literal("custom")),
     customType: v.optional(v.string()),
+    settings: v.optional(v.object({
+      logoId: v.string(),
+      logoUrl: v.optional(v.string()),
+    })),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -20,6 +24,28 @@ export const create = mutation({
       .withIndex("email", (q) => q.eq("email", identity.email))
       .first();
 
+    // Handle logo storage and URL if provided
+    let settings = args.settings;
+    if (args.settings?.logoId) {
+      try {
+        const logoUrl = await ctx.storage.getUrl(args.settings.logoId);
+        settings = {
+          ...args.settings,
+          logoUrl
+        };
+      } catch (error) {
+        console.error("Error getting logo URL:", error);
+        throw new Error("Invalid logo storage ID");
+      }
+    }
+
+    const workspaceData = {
+      name: args.name,
+      type: args.type,
+      customType: args.type === "custom" ? args.customType : undefined,
+      settings: settings || {},
+    };
+
     if (!user) {
       // Create user if not exists
       const userId = await ctx.db.insert("users", {
@@ -30,37 +56,27 @@ export const create = mutation({
       });
       
       // Create workspace
-      const workspace = await ctx.db.insert("workspaces", {
-        name: args.name,
-        type: args.type,
-        customType: args.type === "custom" ? args.customType : undefined,
+      return await ctx.db.insert("workspaces", {
+        ...workspaceData,
         ownerId: userId,
         members: [{
           userId: userId,
           role: "owner",
           joinedAt: Date.now(),
         }],
-        settings: {},
       });
-
-      return workspace;
     }
 
     // Create workspace for existing user
-    const workspace = await ctx.db.insert("workspaces", {
-      name: args.name,
-      type: args.type,
-      customType: args.type === "custom" ? args.customType : undefined,
+    return await ctx.db.insert("workspaces", {
+      ...workspaceData,
       ownerId: user._id,
       members: [{
         userId: user._id,
         role: "owner",
         joinedAt: Date.now(),
       }],
-      settings: {},
     });
-
-    return workspace;
   },
 });
 
@@ -163,21 +179,34 @@ export const update = mutation({
     if (args.name) updates.name = args.name;
     if (args.type) updates.type = args.type;
     if (args.customType && args.type === "custom") updates.customType = args.customType;
+    
+    // Handle settings update with logo
     if (args.settings) {
-      // If settings includes logoId, get the storage URL
+      const currentSettings = workspace.settings || {};
+      let newSettings = { ...currentSettings };
+
+      // If new logo ID is provided, get its URL
       if (args.settings.logoId) {
-        const logoUrl = await ctx.storage.getUrl(args.settings.logoId as Id<"_storage">);
-        updates.settings = {
-          ...workspace.settings,
-          ...args.settings,
-          logoUrl
-        };
+        try {
+          const logoUrl = await ctx.storage.getUrl(args.settings.logoId);
+          newSettings = {
+            ...newSettings,
+            ...args.settings,
+            logoUrl
+          };
+        } catch (error) {
+          console.error("Error getting logo URL:", error);
+          throw new Error("Invalid logo storage ID");
+        }
       } else {
-        updates.settings = {
-          ...workspace.settings,
+        // If no new logo ID, just merge the settings
+        newSettings = {
+          ...newSettings,
           ...args.settings
         };
       }
+
+      updates.settings = newSettings;
     }
 
     const updatedWorkspace = await ctx.db.patch(args.id, updates);

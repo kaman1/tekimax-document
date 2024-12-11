@@ -22,6 +22,7 @@ import { api } from "@v1/backend/convex/_generated/api";
 import { cn } from "@v1/ui/utils";
 import { Input } from "@v1/ui/input";
 import { UploadInput } from "@v1/ui/upload-input";
+import { Avatar } from "@v1/ui/avatar";
 
 const StyledUploadArea = styled('div', {
   border: '2px dashed var(--gray-6)',
@@ -46,32 +47,47 @@ export function CreateWorkspaceModal({
   onWorkspaceCreated?: (workspace: any) => void;
 }) {
   const [name, setName] = useState("");
-  const [workspaceType, setWorkspaceType] = useState<string>("team");
-  const [customType, setCustomType] = useState("");
+  const [logoId, setLogoId] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const createWorkspace = useMutation(api.workspaces.create);
   const generateUploadUrl = useMutation(api.workspaces.generateUploadUrl);
   const { setActiveWorkspaceId } = useWorkspace();
 
-  const handleUpdateWorkspaceLogo = async (uploaded: UploadFileResponse[]) => {
-    if (!uploaded[0]?.response) return;
+  const handleLogoUpload = async (uploaded: UploadFileResponse[]) => {
+    if (!uploaded[0]?.response) {
+      toast.error("Failed to upload logo");
+      return;
+    }
     
     try {
-      const workspace = await createWorkspace({ 
-        name,
-        logoId: (uploaded[0].response as { storageId: Id<"_storage"> }).storageId,
-        type: workspaceType as "team" | "marketing" | "custom",
-        ...(workspaceType === 'custom' ? { customType } : {}),
-      });
+      const storageId = (uploaded[0].response as { storageId: string }).storageId;
+      // Get the URL from the upload response
+      const logoUrl = uploaded[0].url;
+      console.log('Upload response:', { storageId, logoUrl }); // Debug log
       
-      setActiveWorkspaceId(workspace._id);
-      onWorkspaceCreated?.(workspace);
-      setOpen(false);
-      toast.success("Workspace created successfully!");
+      if (!logoUrl) {
+        throw new Error('No URL in upload response');
+      }
+
+      // Set both the ID and preview URL
+      setLogoId(storageId);
+      setLogoPreview(logoUrl);
+      
+      // Show success message
+      toast.success("Logo uploaded successfully");
     } catch (error) {
-      console.error("Error creating workspace:", error);
-      toast.error("Failed to create workspace");
+      console.error("Error handling logo upload:", error);
+      toast.error("Failed to process logo upload");
+      // Reset the state on error
+      setLogoId(null);
+      setLogoPreview(null);
     }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoId(null);
+    setLogoPreview(null);
+    toast.success("Logo removed");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,16 +98,15 @@ export function CreateWorkspaceModal({
       return;
     }
 
-    if (workspaceType === 'custom' && !customType) {
-      toast.error("Please enter a custom type");
-      return;
-    }
-
     try {
+      // Create workspace with logo if available
       const workspace = await createWorkspace({ 
         name,
-        type: workspaceType as "team" | "marketing" | "custom",
-        ...(workspaceType === 'custom' ? { customType } : {}),
+        type: "custom",
+        settings: logoId ? {
+          logoId,
+          logoUrl: logoPreview || undefined,
+        } : undefined,
       });
       
       setActiveWorkspaceId(workspace._id);
@@ -106,127 +121,106 @@ export function CreateWorkspaceModal({
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={setOpen}>
-      <Dialog.Content style={{ maxWidth: 450 }}>
-        <div className="relative overflow-hidden rounded-t-lg -mx-5 -mt-5 p-5 mb-5">
-          <AnimatedGridPattern
-            numSquares={30}
-            maxOpacity={0.1}
-            duration={3}
-            repeatDelay={1}
-            className={cn(
-              "[mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
-              "absolute inset-x-0 inset-y-[-30%] h-[200%] skew-y-12"
-            )}
-          />
-          <Dialog.Title className="text-2xl font-semibold relative z-10">
-            Create New Workspace
+      <Dialog.Content className="max-w-2xl">
+        <div className="relative">
+          <div className="absolute inset-0 overflow-hidden -z-10">
+            <AnimatedGridPattern
+              numSquares={30}
+              maxOpacity={0.1}
+              duration={3}
+              repeatDelay={1}
+              className={cn(
+                "[mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
+                "absolute inset-x-0 inset-y-[-30%] h-[200%] skew-y-12"
+              )}
+            />
+            <div className="absolute inset-0 bg-background/20" />
+          </div>
+          <Dialog.Title>
+            <Text size="5" weight="bold">Create New Workspace</Text>
           </Dialog.Title>
-          <Dialog.Description size="2" color="gray" className="relative z-10">
-            Create a new workspace to organize your projects and collaborate with others.
-          </Dialog.Description>
-        </div>
 
-        <Form.Root 
-          onSubmit={handleSubmit}
-          // Prevent the browser confirmation dialog
-          data-no-unload-prompt="true"
-        >
-          <Flex direction="column" gap="4">
-            <Box>
-              <Form.Field className="grid" name="workspace-name">
-                <div className="flex items-baseline justify-between">
-                  <Form.Label className="text-[15px] font-medium leading-[35px]">
-                    Workspace Name
-                  </Form.Label>
-                  <Form.Message className="text-[13px] opacity-80" match="valueMissing">
-                    Please enter a workspace name
-                  </Form.Message>
-                </div>
-                <Form.Control asChild>
-                  <Input
-                    id="workspace-name"
-                    placeholder="Enter workspace name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </Form.Control>
-              </Form.Field>
-            </Box>
+          <Form.Root className="mt-6" onSubmit={handleSubmit}>
+            <Flex gap="6" align="start">
+              {/* Logo Upload */}
+              <div className="flex-shrink-0">
+                <Text size="2" weight="medium" mb="2">Workspace Logo</Text>
+                {logoPreview ? (
+                  <div className="relative">
+                    <Avatar
+                      size="6"
+                      src={logoPreview}
+                      fallback={<ImageIcon className="h-8 w-8 text-gray-600" />}
+                      className="border-2 border-gray-200"
+                    />
+                    <Button
+                      type="button"
+                      variant="soft"
+                      color="red"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 shadow-sm hover:bg-red-600 hover:text-white transition-colors"
+                      onClick={handleRemoveLogo}
+                    >
+                      <Cross2Icon className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Avatar
+                      size="6"
+                      fallback={
+                        <div className="h-full w-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer">
+                          <ImageIcon className="h-8 w-8 text-gray-600" />
+                        </div>
+                      }
+                      className="border-2 border-gray-200"
+                    >
+                      <UploadInput
+                        generateUploadUrl={generateUploadUrl}
+                        onUploadComplete={handleLogoUpload}
+                        maxFiles={1}
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    </Avatar>
+                    <Text size="1" color="gray" align="center" mt="1">
+                      Click to upload
+                    </Text>
+                  </div>
+                )}
+              </div>
 
-            <Box>
-              <Form.Field className="grid" name="workspace-type">
-                <div className="flex items-baseline justify-between">
-                  <Form.Label className="text-[15px] font-medium leading-[35px]">
-                    Workspace Type
-                  </Form.Label>
-                </div>
-                <Flex direction="column" gap="2">
-                  <Select.Root value={workspaceType} onValueChange={setWorkspaceType}>
-                    <Select.Trigger id="workspace-type" />
-                    <Select.Content position="popper">
-                      <Select.Group>
-                        <Select.Label>Select Type</Select.Label>
-                        <Select.Item value="team">Team Workspace</Select.Item>
-                        <Select.Item value="marketing">Marketing Workspace</Select.Item>
-                        <Select.Item value="custom">Create Custom Type...</Select.Item>
-                      </Select.Group>
-                    </Select.Content>
-                  </Select.Root>
-                  {workspaceType === 'custom' && (
-                    <Form.Field className="grid" name="custom-type">
-                      <Form.Control asChild>
-                        <Input
-                          placeholder="Enter custom type"
-                          value={customType}
-                          onChange={(e) => setCustomType(e.target.value)}
-                          required={workspaceType === 'custom'}
-                        />
-                      </Form.Control>
-                    </Form.Field>
-                  )}
-                </Flex>
-              </Form.Field>
-            </Box>
-
-            <Flex direction="column" gap="2">
-              <Text weight="medium" size="2">Workspace Logo</Text>
-              <UploadInput
-                generateUploadUrl={generateUploadUrl}
-                onUploadComplete={handleUpdateWorkspaceLogo}
-                maxFiles={1}
-                label="Upload Logo"
-              />
-              <Text size="1" color="gray">
-                Recommended: Square image, max 5MB
-              </Text>
+              {/* Workspace Name */}
+              <div className="flex-grow space-y-1">
+                <Text size="2" weight="medium">Workspace Name</Text>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter workspace name"
+                  required
+                  className="w-full"
+                />
+                <Text size="1" color="gray">
+                  This will be the name of your workspace
+                </Text>
+              </div>
             </Flex>
 
-          </Flex>
-
-          <Flex gap="3" mt="6" justify="end">
-            <Form.Submit asChild>
+            {/* Submit Button */}
+            <Flex gap="3" mt="6" justify="end">
               <Button 
-                type="submit"
-                disabled={!name}
-                variant="solid"
+                variant="soft" 
+                color="gray" 
+                onClick={() => setOpen(false)}
               >
+                Cancel
+              </Button>
+              <Button type="submit">
                 Create Workspace
               </Button>
-            </Form.Submit>
-          </Flex>
-        </Form.Root>
-
-        <Dialog.Close>
-          <Button
-            variant="ghost"
-            size="1"
-            color="gray"
-            style={{ position: 'absolute', right: 16, top: 16 }}
-          >
-            <Cross2Icon />
-          </Button>
-        </Dialog.Close>
+            </Flex>
+          </Form.Root>
+        </div>
       </Dialog.Content>
     </Dialog.Root>
   );
