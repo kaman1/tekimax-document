@@ -48,23 +48,7 @@ export default function DashboardSettings() {
   const removeWorkspace = useMutation(api.workspaces.remove);
   const createWorkspaceType = useMutation(api.workspaceTypes.create);
   const workspaceTypes = useQuery(api.workspaceTypes.list);
-  const defaultWorkspaceTypes = [
-    {
-      id: "personal",
-      name: "Personal Workspace",
-      description: "For individual use and personal projects"
-    },
-    {
-      id: "team",
-      name: "Team Workspace",
-      description: "For team collaboration and shared projects"
-    },
-    {
-      id: "marketing",
-      name: "Marketing Workspace",
-      description: "For marketing teams and campaigns"
-    }
-  ];
+
   const router = useRouter();
 
   const handleUpdateUserImage = (uploaded: UploadFileResponse[]) => {
@@ -80,8 +64,11 @@ export default function DashboardSettings() {
     try {
       const storageId = (uploaded[0].response as { storageId: Id<"_storage"> }).storageId;
       await updateWorkspace({
-        id: activeWorkspace?._id,
-        logoId: storageId,
+        id: activeWorkspace._id,
+        settings: {
+          ...activeWorkspace.settings,
+          logoId: storageId
+        }
       });
       toast.success('Workspace logo updated');
     } catch (error) {
@@ -90,54 +77,58 @@ export default function DashboardSettings() {
     }
   };
 
+  const handleRemoveWorkspaceLogo = async () => {
+    if (!activeWorkspace?._id) return;
+    
+    try {
+      await updateWorkspace({
+        id: activeWorkspace._id,
+        settings: {
+          ...activeWorkspace.settings,
+          logoId: undefined,
+          logoUrl: undefined
+        }
+      });
+      toast.success('Workspace logo removed');
+    } catch (error) {
+      console.error("Error removing workspace logo:", error);
+      toast.error('Failed to remove workspace logo');
+    }
+  };
+
   const handleUpdateWorkspaceName = async () => {
-    if (!workspaceName || !activeWorkspace || workspaceName === activeWorkspace?.name) {
+    if (!workspaceName || !activeWorkspace || workspaceName === activeWorkspace.name) {
       setIsEditingName(false);
-      setWorkspaceName(activeWorkspace?.name || "");
       return;
     }
 
     try {
       await updateWorkspace({
-        id:   activeWorkspace?._id,
-        name: workspaceName.trim(),
+        id: activeWorkspace._id,
+        name: workspaceName,
       });
       setIsEditingName(false);
-      toast.success('Workspace name updated');
+      toast.success("Workspace name updated successfully");
     } catch (error) {
       console.error("Error updating workspace name:", error);
-      setWorkspaceName(activeWorkspace?.name);
-      setIsEditingName(false);
-      setIsEditingName(false);
-      toast.error('Failed to update workspace name');
+      toast.error("Failed to update workspace name");
     }
   };
 
-  const handleUpdateWorkspaceType = async () => {
-    if (!activeWorkspace?._id) return;
+  const handleUpdateWorkspaceType = async (type: string, customType?: string) => {
+    if (!activeWorkspace) return;
 
     try {
-      if (workspaceType === 'custom' && customType.trim()) {
-        // First create the workspace type
-        await createWorkspaceType({
-          name: customType.trim(),
-          description: `Custom workspace type: ${customType.trim()}`,
-          workspaceId: activeWorkspace?._id
-        });
-      }
-      
-      await updateWorkspace({
-        id: activeWorkspace?._id,
-        type: workspaceType as "team" | "marketing" | "custom",
-        ...(workspaceType === 'custom' ? { customType: customType.trim() } : {}),
+      await api.workspaces.update({
+        id: activeWorkspace._id,
+        type,
+        customType,
+        name: activeWorkspace.name,
       });
-      
-      setIsEditingType(false);
-      toast.success('Workspace type updated');
+      toast.success("Workspace type updated successfully");
     } catch (error) {
       console.error("Error updating workspace type:", error);
-      setIsEditingType(false);
-      toast.error('Failed to update workspace type');
+      toast.error("Failed to update workspace type");
     }
   };
 
@@ -173,21 +164,32 @@ export default function DashboardSettings() {
 
   const unsubscribeHref = `https://sandbox.polar.sh/purchases/subscriptions/${user?.subscription?.polarId}`;
 
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+
   const usernameForm = useForm({
     validatorAdapter: zodValidator(),
     defaultValues: {
       username: user?.username ?? "",
     },
     onSubmit: async ({ value }) => {
+      if (!value.username.trim()) {
+        toast.error('Username cannot be empty');
+        return;
+      }
+      
+      setIsUpdatingUsername(true);
       try {
         await updateUsername({
-          username: value.username,
+          username: value.username.trim(),
         });
         toast.success('Username updated successfully');
         setIsEditingUsername(false);
       } catch (error) {
         console.error("Error updating username:", error);
-        toast.error('Failed to update username');
+        toast.error('Failed to update username. Please try again.');
+      } finally {
+        setIsUpdatingUsername(false);
       }
     },
   });
@@ -298,8 +300,9 @@ export default function DashboardSettings() {
                             value={field.state.value}
                             onBlur={field.handleBlur}
                             onChange={(e) => field.handleChange(e.target.value)}
+                            disabled={isUpdatingUsername}
                             className={`w-full bg-transparent ${
-                              field.state.meta?.errors.length > 0 &&
+                              field.state.meta?.errors?.length > 0 &&
                               "border-destructive focus-visible:ring-destructive"
                             }`}
                           />
@@ -311,9 +314,13 @@ export default function DashboardSettings() {
                         </Text>
                       )}
                     </Box>
-                    <Button type="submit" size="2" variant="solid" highContrast>
-                      <CheckIcon className="h-4 w-4 mr-2" />
-                      Save
+                    <Button 
+                      type="submit"
+                      disabled={isUpdatingUsername}
+                      loading={isUpdatingUsername}
+                      className="bg-amber-800 hover:bg-amber-700 text-white font-medium"
+                    >
+                      {isUpdatingUsername ? 'Updating...' : 'Update Username'}
                     </Button>
                   </Flex>
                 </Box>
@@ -351,9 +358,9 @@ export default function DashboardSettings() {
                           accept="image/*"
                           label={
                             <div className="relative h-12 w-12 overflow-hidden rounded-lg border border-input hover:bg-accent/10 transition-colors cursor-pointer">
-                              {activeWorkspace?.logoUrl ? (
+                              {activeWorkspace?.settings?.logoUrl ? (
                                 <img
-                                  src={activeWorkspace?.logoUrl}
+                                  src={activeWorkspace.settings.logoUrl}
                                   alt={activeWorkspace?.name}
                                   className="h-full w-full object-cover"
                                 />
@@ -368,16 +375,28 @@ export default function DashboardSettings() {
                             </div>
                           }
                         />
+                        {activeWorkspace?.settings?.logoUrl && (
+                          <Button
+                            type="button"
+                            size="1"
+                            variant="soft"
+                            className="absolute -bottom-2 -right-2 h-6 w-6 rounded-full p-0"
+                            onClick={handleRemoveWorkspaceLogo}
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                          </Button>
+                        )}
                       </Box>
 
                       {/* Workspace Name and Users Count */}
                       <Flex direction="column" gap="1">
                         {isEditingName ? (
                           <Box>
-                            <Input
+                            <input
                               value={workspaceName}
                               onChange={(e) => setWorkspaceName(e.target.value)}
                               placeholder="Workspace name"
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   handleUpdateWorkspaceName();
@@ -387,19 +406,30 @@ export default function DashboardSettings() {
                                   setWorkspaceName(activeWorkspace?.name || "");
                                 }
                               }}
-                              onBlur={handleUpdateWorkspaceName}
+                              onBlur={() => {
+                                if (workspaceName !== activeWorkspace?.name) {
+                                  handleUpdateWorkspaceName();
+                                } else {
+                                  setIsEditingName(false);
+                                }
+                              }}
                               autoFocus
                             />
                           </Box>
                         ) : (
-                          <Text size="3" weight="medium">
+                          <Text size="3" weight="medium" className="cursor-pointer" onClick={() => {
+                            setIsEditingName(true);
+                            setWorkspaceName(activeWorkspace?.name || "");
+                          }}>
                             {activeWorkspace?.name || "Personal Workspace"}
                           </Text>
                         )}
                         <Flex gap="2" align="center">
-                          <Text size="1" color="gray">
-                            {members?.length || 0} member{members?.length !== 1 ? 's' : ''}
-                          </Text>
+                          <Badge color="green" className="rounded-md">
+                            <Text size="1" weight="medium">
+                              {activeWorkspace?.type || 'personal'}
+                            </Text>
+                          </Badge>
                         </Flex>
                       </Flex>
                     </Flex>
@@ -433,119 +463,7 @@ export default function DashboardSettings() {
                   </Flex>
                 </Box>
                 
-                <Box>
-                  <Flex justify="between" align="center" mb="2">
-                    <Box>
-                      <Text as="p" size="2" weight="medium">
-                        Workspace Type
-                      </Text>
-                      <Text as="p" size="2" color="gray">
-                        The type of workspace determines its features and capabilities
-                      </Text>
-                    </Box>
-                    {!isEditingType && (
-                      <Button 
-                        variant="soft" 
-                        onClick={() => {
-                          setIsEditingType(true);
-                          setWorkspaceType(activeWorkspace?.type || 'personal');
-                          setCustomType(activeWorkspace?.customType || '');
-                        }}
-                      >
-                        <Pencil1Icon className="h-4 w-4 mr-2" />
-                        Edit Type
-                      </Button>
-                    )}
-                  </Flex>
-
-                  {isEditingType ? (
-                    <Flex direction="column" gap="3">
-                      <div className="space-y-2">
-                        <Label htmlFor="workspace-type">Select Workspace Type</Label>
-                        <Select
-                          value={workspaceType || 'personal'}
-                          onValueChange={(value) => {
-                            setWorkspaceType(value);
-                            if (value !== 'custom') {
-                              handleUpdateWorkspaceType(value);
-                            }
-                          }}
-                        >
-                          <SelectTrigger id="workspace-type">
-                            <SelectValue>
-                              {workspaceType === 'custom'
-                                ? customType || 'Custom Type...'
-                                : workspaceType || 'Personal'}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {/* Default Types */}
-                            <SelectItem value="personal">Personal Workspace</SelectItem>
-                            <SelectItem value="team">Team Workspace</SelectItem>
-                            
-                            {/* Custom Types */}
-                            {workspaceTypes?.customTypes.map((type) => (
-                              <SelectItem key={type.id} value={`custom:${type.name}`}>
-                                {type.name}
-                              </SelectItem>
-                            ))}
-                            
-                            {/* Create Custom Type Option */}
-                            <SelectItem value="custom">Create Custom Type...</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {workspaceType === 'custom' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="custom-type">Custom Type Name</Label>
-                          <Input
-                            id="custom-type"
-                            placeholder="Enter custom type name"
-                            value={customType}
-                            onChange={(e) => setCustomType(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && customType.trim()) {
-                                handleUpdateWorkspaceType();
-                              }
-                              if (e.key === 'Escape') {
-                                setIsEditingType(false);
-                                setWorkspaceType(activeWorkspace?.type || 'personal');
-                                setCustomType(activeWorkspace?.customType || '');
-                              }
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <Flex gap="2">
-                        <Button
-                          variant="soft"
-                          onClick={() => {
-                            setIsEditingType(false);
-                            setWorkspaceType(activeWorkspace?.type || 'personal');
-                            setCustomType(activeWorkspace?.customType || '');
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="solid"
-                          onClick={() => handleUpdateWorkspaceType()}
-                          disabled={workspaceType === 'custom' && !customType.trim()}
-                        >
-                          Save Type
-                        </Button>
-                      </Flex>
-                    </Flex>
-                  ) : (
-                    <Badge variant="soft" radius="full" size="1">
-                      {activeWorkspace?.type === 'custom'
-                        ? activeWorkspace.customType
-                        : activeWorkspace?.type || 'Personal'}
-                    </Badge>
-                  )}
-                </Box>
+             
               </Flex>
 
               <Separator my="3" size="4" />
@@ -654,21 +572,7 @@ export default function DashboardSettings() {
                 </Table.Root>
               </Box>
 
-              {/* Workspace Actions */}
-              {!activeWorkspace?.isPersonal && (
-                <>
-                  <Separator my="3" size="4" />
-                  <Box>
-                    <Text as="p" size="2" weight="medium" mb="2" className="text-red-500">
-                      Danger Zone
-                    </Text>
-                    <Button color="red" variant="soft" className="gap-1">
-                      <TrashIcon />
-                      Delete Workspace
-                    </Button>
-                  </Box>
-                </>
-              )}
+             
             </Flex>
           </Card>
         </Box>
@@ -739,19 +643,8 @@ export default function DashboardSettings() {
         </Box>
       </Card>
 
-      <div className="flex items-center justify-between border-t border-border/50 pt-6">
-        <div className="space-y-1">
-          <Text as="p" size="2" weight="medium">Sign out</Text>
-          <Text as="p" size="2" color="gray">Sign out of your account</Text>
-        </div>
-        <Button
-          color="gray"
-          variant="soft"
-          onClick={handleSignOut}
-        >
-          Sign out
-        </Button>
-      </div>
+     
+ 
 
       <UnsubscribeWarningModal
         isOpen={isUnsubscribeModalOpen}

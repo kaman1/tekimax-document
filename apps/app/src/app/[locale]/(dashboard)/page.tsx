@@ -11,9 +11,35 @@ import { useQuery } from "convex/react";
 import { api } from "@v1/backend/convex/_generated/api";
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { activeWorkspace } = useWorkspace();
+  const router = useRouter();
+  const workspaces = useQuery(api.workspaces.list);
+  const user = useQuery(api.users.getUser);
+  const { activeWorkspace, isLoading } = useWorkspace();
+
+  useEffect(() => {
+    // Only redirect if we have loaded the workspace data and there are no workspaces
+    if (!isLoading && workspaces !== undefined && workspaces.length === 0) {
+      router.push("/onboarding");
+      return;
+    }
+  }, [workspaces, isLoading, router]);
+
+  // Show loading state while checking workspace status
+  if (isLoading || !user || workspaces === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Text>Loading...</Text>
+      </div>
+    );
+  }
+
+  // If no workspaces, don't render dashboard content
+  if (workspaces.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

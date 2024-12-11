@@ -101,7 +101,10 @@ export default defineSchema({
       role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
       joinedAt: v.number(),
     })),
-    settings: v.object({}),
+    settings: v.object({
+      logoId: v.optional(v.string()),
+      logoUrl: v.optional(v.string()),
+    }),
   })
     .index("by_owner", ["ownerId"])
     .index("by_member", ["members"]),

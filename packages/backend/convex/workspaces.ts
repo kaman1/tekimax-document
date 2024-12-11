@@ -158,17 +158,30 @@ export const update = mutation({
       throw new Error("Unauthorized");
     }
 
-    const updates: any = {
-      updatedAt: Date.now(),
-    };
+    const updates: any = {};
 
     if (args.name) updates.name = args.name;
     if (args.type) updates.type = args.type;
     if (args.customType && args.type === "custom") updates.customType = args.customType;
-    if (args.settings) updates.settings = { ...workspace.settings, ...args.settings };
+    if (args.settings) {
+      // If settings includes logoId, get the storage URL
+      if (args.settings.logoId) {
+        const logoUrl = await ctx.storage.getUrl(args.settings.logoId as Id<"_storage">);
+        updates.settings = {
+          ...workspace.settings,
+          ...args.settings,
+          logoUrl
+        };
+      } else {
+        updates.settings = {
+          ...workspace.settings,
+          ...args.settings
+        };
+      }
+    }
 
-    const updated = await ctx.db.patch(args.id, updates);
-    return updated;
+    const updatedWorkspace = await ctx.db.patch(args.id, updates);
+    return updatedWorkspace;
   },
 });
 

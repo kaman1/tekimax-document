@@ -9,77 +9,87 @@ import { Input } from "@v1/ui/input";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Image from "next/image";
 import { AnimatedGridPattern } from "@/components/magicui/animated-grid-pattern";
 import { Text } from "@radix-ui/themes";
 import { cn } from "@v1/ui/utils";
+import { toast } from "sonner";
 
-
-export default function OnboardingUsername() {
+export default function OnboardingPage() {
   const user = useQuery(api.users.getUser);
   const updateUsername = useMutation(api.users.updateUsername);
+  const createWorkspace = useMutation(api.workspaces.create);
   const router = useRouter();
-
   const { pending } = useFormStatus();
+  const [step, setStep] = useState(1);
 
-  const form = useForm({
+  // Form for username
+  const usernameForm = useForm({
     validatorAdapter: zodValidator(),
     defaultValues: {
       username: "",
     },
     onSubmit: async ({ value }) => {
-      await updateUsername({
-        username: value.username,
-      });
+      try {
+        await updateUsername({
+          username: value.username,
+        });
+        toast.success('Username set successfully');
+        setStep(2);
+      } catch (error) {
+        console.error("Error updating username:", error);
+        toast.error('Failed to set username');
+      }
+    },
+  });
+
+  // Form for workspace
+  const workspaceForm = useForm({
+    validatorAdapter: zodValidator(),
+    defaultValues: {
+      name: "",
+      type: "personal" as const,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        await createWorkspace({
+          name: value.name,
+          type: value.type,
+        });
+        toast.success('Workspace created successfully');
+        router.push("/");
+      } catch (error) {
+        console.error("Error creating workspace:", error);
+        toast.error('Failed to create workspace');
+      }
     },
   });
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-    if (user?.username && user?.subscription) {
-      router.push("/");
+    if (!user) return;
+    
+    // If user has username and workspace, redirect to home
+    if (user.username) {
+      const checkWorkspace = async () => {
+        const workspaces = await useQuery(api.workspaces.list);
+        if (workspaces && workspaces.length > 0) {
+          router.push("/");
+        } else {
+          setStep(2);
+        }
+      };
+      checkWorkspace();
     }
   }, [user]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  const showSubscriptionPending = !!user.username;
-
-  if (showSubscriptionPending) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-center text-base font-normal text-primary/60">
-          Processing your subscription. This may take a moment...
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative h-screen w-screen overflow-hidden flex">
-      {/* Top right logo */}
-      <div className="absolute top-6 right-0 md:top-8 z-10 w-full lg:w-[90%] flex justify-end pr-8">
-        <div className="flex items-center justify-center">
-          <Image
-            src="https://industrious-narwhal-216.convex.cloud/api/storage/8defaf0e-e576-4f1b-8f3e-6c86cd0777e7"
-            alt="Icon"
-            width={360}
-            height={360}
-            className="w-[40px] md:w-[60px] h-auto"
-          />
-        </div>
-      </div>
-
-      {/* Center card for small screens */}
-      <div className="lg:hidden w-full h-full flex items-center justify-center p-6 relative z-50">
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-8 w-full max-w-md relative">
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
           <div className="space-y-8">
             <div className="flex flex-col items-center gap-2">
               <span className="mb-2 select-none text-6xl">👋</span>
@@ -95,14 +105,14 @@ export default function OnboardingUsername() {
               onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                form.handleSubmit();
+                usernameForm.handleSubmit();
               }}
             >
               <div className="flex w-full flex-col gap-1.5">
                 <label htmlFor="username" className="sr-only">
                   Username
                 </label>
-                <form.Field
+                <usernameForm.Field
                   name="username"
                   validators={{
                     onSubmit: validators.username,
@@ -122,14 +132,6 @@ export default function OnboardingUsername() {
                     />
                   )}
                 />
-                {form.state.errors.username?.map((error) => (
-                  <p
-                    key={error}
-                    className="text-sm font-normal text-destructive"
-                  >
-                    {error}
-                  </p>
-                ))}
               </div>
               <Button
                 type="submit"
@@ -141,6 +143,80 @@ export default function OnboardingUsername() {
               </Button>
             </form>
           </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-8">
+            <div className="flex flex-col items-center gap-2">
+              <span className="mb-2 select-none text-6xl">🚀</span>
+              <h3 className="text-center text-2xl font-medium text-primary">
+                Create Your Workspace
+              </h3>
+              <p className="text-center text-base font-normal text-primary/60">
+                Set up your first workspace to get started.
+              </p>
+            </div>
+            <form
+              className="flex w-full flex-col items-start gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                workspaceForm.handleSubmit();
+              }}
+            >
+              <div className="flex w-full flex-col gap-1.5">
+                <label htmlFor="name" className="sr-only">
+                  Workspace Name
+                </label>
+                <workspaceForm.Field
+                  name="name"
+                  children={(field) => (
+                    <Input
+                      placeholder="Workspace Name"
+                      autoComplete="off"
+                      required
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="bg-transparent"
+                    />
+                  )}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="mt-4 w-full bg-amber-800 hover:bg-amber-700 text-white font-medium"
+                disabled={pending}
+                loading={pending}
+              >
+                Create Workspace
+              </Button>
+            </form>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="relative h-screen w-screen overflow-hidden flex">
+      {/* Top right logo */}
+      <div className="absolute top-6 right-0 md:top-8 z-10 w-full lg:w-[90%] flex justify-end pr-8">
+        <div className="flex items-center justify-center">
+          <Image
+            src="https://industrious-narwhal-216.convex.cloud/api/storage/8defaf0e-e576-4f1b-8f3e-6c86cd0777e7"
+            alt="Icon"
+            width={360}
+            height={360}
+            className="w-[40px] md:w-[60px] h-auto"
+          />
+        </div>
+      </div>
+
+      {/* Center card for small screens */}
+      <div className="lg:hidden w-full h-full flex items-center justify-center p-6 relative z-50">
+        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-8 w-full max-w-md relative">
+          {renderStep()}
         </div>
       </div>
 
@@ -149,72 +225,12 @@ export default function OnboardingUsername() {
         {/* Form card */}
         <div className="absolute top-1/2 left-16 -translate-y-1/2 z-50">
           <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-8 max-w-md relative">
-            <div className="space-y-8">
-              <div className="flex flex-col items-center gap-2">
-                <span className="mb-2 select-none text-6xl">👋</span>
-                <h3 className="text-center text-2xl font-medium text-primary">
-                  Welcome!
-                </h3>
-                <p className="text-center text-base font-normal text-primary/60">
-                  Let's get started by choosing a username.
-                </p>
-              </div>
-              <form
-                className="flex w-full flex-col items-start gap-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  form.handleSubmit();
-                }}
-              >
-                <div className="flex w-full flex-col gap-1.5">
-                  <label htmlFor="username" className="sr-only">
-                    Username
-                  </label>
-                  <form.Field
-                    name="username"
-                    validators={{
-                      onSubmit: validators.username,
-                    }}
-                    children={(field) => (
-                      <Input
-                        placeholder="Username"
-                        autoComplete="off"
-                        required
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        className={`bg-transparent ${
-                          field.state.meta?.errors?.length > 0 &&
-                          "border-destructive focus-visible:ring-destructive"
-                        }`}
-                      />
-                    )}
-                  />
-                  {form.state.errors.username?.map((error) => (
-                    <p
-                      key={error}
-                      className="text-sm font-normal text-destructive"
-                    >
-                      {error}
-                    </p>
-                  ))}
-                </div>
-                <Button
-                  type="submit"
-                  className="mt-4 w-full bg-amber-800 hover:bg-amber-700 text-white font-medium"
-                  disabled={pending}
-                  loading={pending}
-                >
-                  Continue
-                </Button>
-              </form>
-            </div>
+            {renderStep()}
           </div>
         </div>
 
         <Image
-          src="https://industrious-narwhal-216.convex.cloud/api/storage/7e398218-e50f-4ce7-ba8d-a0c4fc473def"
+          src="https://industrious-narwhal-216.convex.cloud/api/storage/f4c858a5-a814-4040-85a6-110e81048952"
           alt="Login hero image"
           fill
           className="object-cover mix-blend-overlay opacity-100"

@@ -13,27 +13,13 @@ const I18nMiddleware = createI18nMiddleware({
 });
 
 const isSignInPage = createRouteMatcher(["/login"]);
-const isOnboardingPage = createRouteMatcher(["/onboarding"]);
-const isPublicPage = createRouteMatcher(["/login", "/onboarding"]);
 
-export default convexAuthNextjsMiddleware(async (request) => {
-  const url = new URL(request.url);
-  const isLogout = url.searchParams.has("logout");
-  const isAccountDeleted = url.searchParams.has("accountDeleted");
-
-  // Handle logout and account deletion
-  if (isLogout || isAccountDeleted) {
-    return nextjsMiddlewareRedirect(request, "/login");
-  }
-
-  // If not on a public page and not authenticated, redirect to login
-  if (!isPublicPage(request) && !isAuthenticatedNextjs()) {
-    return nextjsMiddlewareRedirect(request, "/login");
-  }
-
-  // If on login page and authenticated, redirect to onboarding
+export default convexAuthNextjsMiddleware((request) => {
   if (isSignInPage(request) && isAuthenticatedNextjs()) {
-    return nextjsMiddlewareRedirect(request, "/onboarding");
+    return nextjsMiddlewareRedirect(request, "/");
+  }
+  if (!isSignInPage(request) && !isAuthenticatedNextjs()) {
+    return nextjsMiddlewareRedirect(request, "/login");
   }
 
   return I18nMiddleware(request);
@@ -42,6 +28,8 @@ export default convexAuthNextjsMiddleware(async (request) => {
 export const config = {
   matcher: [
     "/((?!_next/static|api|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+
+    // all routes except static assets
     "/((?!.*\\..*|_next).*)",
     "/",
     "/(api|trpc)(.*)",
