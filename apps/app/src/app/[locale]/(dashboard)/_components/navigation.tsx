@@ -156,15 +156,20 @@ export function Navigation({
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
             <Button variant="ghost" className="gap-2">
-              {user.imageUrl ? (
-                <img
-                  src={activeWorkspace.logoUrl || user.imageUrl}
-                  alt={activeWorkspace.name || user.username}
-                  className="h-8 w-8 rounded-full object-cover"
+              {user.avatarUrl ? (
+                <Image
+                  src={user.avatarUrl}
+                  alt={"avatar"}
+                  className="h-7 w-7 rounded-full object-cover"
+                  width={224}
+                  height={224}
                 />
               ) : (
                 <Box className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--accent-9)] to-[var(--accent-3)]" />
               )}
+              <Text size="2" weight="medium">
+                @{user.name}
+              </Text>
               <ChevronDownIcon />
             </Button>
           </DropdownMenu.Trigger>
@@ -198,14 +203,6 @@ export function Navigation({
                 <Text size="2">Settings</Text>
               </Flex>
             </DropdownMenu.Item>
-            {user.plan === PLANS.FREE && (
-              <DropdownMenu.Item onSelect={() => router.push('/settings/billing')}>
-                <Flex gap="2" align="center">
-                  <StarFilledIcon />
-                  <Text size="2">Upgrade to Pro</Text>
-                </Flex>
-              </DropdownMenu.Item>
-            )}
             <DropdownMenu.Separator />
             <DropdownMenu.Label>
               <Text size="1" color="gray">Language</Text>
